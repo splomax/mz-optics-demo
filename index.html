@@ -570,11 +570,18 @@ QUOTES.slice(1).forEach(q => {
     c.globalCompositeOperation = "source-over";
     if (still === true) return;
     if (t > 1200) reset();
-    requestAnimationFrame(frame);
+    if (running) requestAnimationFrame(frame); else looping = false;
   }
-  reset(); addEventListener("resize", reset);
+  reset();
+  // Mobile browsers fire resize while scrolling (the URL bar shows/hides), so only restart on a real width change.
+  let lastWidth = cv.offsetWidth;
+  addEventListener("resize", () => { if (cv.offsetWidth !== lastWidth) { lastWidth = cv.offsetWidth; reset(); } });
   if (reduce) return;
-  requestAnimationFrame(frame);
+  // Pause while the hero is scrolled out of view.
+  let running = true, looping = false;
+  function start() { if (running && !looping) { looping = true; requestAnimationFrame(frame); } }
+  new IntersectionObserver(([e]) => { running = e.isIntersecting; start(); }).observe(cv);
+  start();
 })();
 
 /* ---------- Portrait placeholder ---------- */
