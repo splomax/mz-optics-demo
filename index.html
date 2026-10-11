@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MZ Optics — Michael Zimmerman</title>
+<meta name="description" content="Projection, tour visuals and machine drawings by Michael Zimmerman.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #07070a;
+    --surface: #111117;
+    --line: #23232c;
+    --text: #ecebf2;
+    --muted: #8b8a99;
+    --accent: #7cf7d4;
+    --accent-2: #ff5ea8;
+    --radius: 14px;
+    --gutter: clamp(16px, 4vw, 48px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 400 16px/1.6 "Space Grotesk", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  a { color: inherit; }
+  img, canvas { display: block; max-width: 100%; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 var(--gutter); }
+  .serif { font-family: "Instrument Serif", Georgia, serif; font-weight: 400; }
+
+  /* Nav */
+  header.nav {
+    position: fixed; inset: 0 0 auto 0; z-index: 50;
+    backdrop-filter: blur(14px); background: rgba(7,7,10,.6);
+    border-bottom: 1px solid transparent; transition: border-color .3s;
+  }
+  header.nav.scrolled { border-color: var(--line); }
+  .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .logo { font-weight: 700; letter-spacing: .14em; text-decoration: none; font-size: 14px; }
+  .logo span { color: var(--accent); }
+  .nav ul { display: flex; gap: 28px; list-style: none; font-size: 14px; }
+  .nav ul a { text-decoration: none; color: var(--muted); transition: color .2s; }
+  .nav ul a:hover { color: var(--text); }
+  @media (max-width: 640px) { .nav ul { gap: 16px; font-size: 13px; } .nav ul li.hide-sm { display: none; } }
+
+  /* Hero */
+  .hero { position: relative; min-height: min(100svh, 980px); display: grid; align-items: end; overflow: hidden; }
+  #hero-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .hero::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(to top, var(--bg) 0%, transparent 45%), radial-gradient(ellipse at center, transparent 40%, rgba(7,7,10,.7) 100%);
+  }
+  .hero-copy { position: relative; z-index: 2; padding-bottom: clamp(48px, 10vh, 120px); }
+  .eyebrow { font-size: 12px; letter-spacing: .25em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; }
+  .hero h1 { font-size: clamp(56px, 11vw, 168px); line-height: .9; letter-spacing: -.02em; }
+  .hero h1 em { color: var(--accent-2); }
+  .hero p.lead { max-width: 520px; margin-top: 24px; color: var(--muted); font-size: clamp(16px, 1.6vw, 19px); }
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px; margin-top: 32px;
+    padding: 14px 24px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--surface); color: var(--text); text-decoration: none; font: inherit; font-size: 14px; cursor: pointer;
+    transition: border-color .2s, transform .2s;
+  }
+  .btn:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .btn.primary { background: var(--accent); color: #04110d; border-color: var(--accent); font-weight: 500; }
+
+  /* Sections */
+  section { padding: clamp(72px, 12vw, 140px) 0; }
+  .section-head { display: flex; justify-content: space-between; align-items: end; gap: 24px; flex-wrap: wrap; margin-bottom: 40px; }
+  .section-head h2 { font-size: clamp(40px, 6vw, 80px); line-height: 1; }
+  .section-head p { color: var(--muted); max-width: 380px; }
+
+  /* Filters */
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; }
+  .chip {
+    padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line); background: transparent;
+    color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; transition: all .2s;
+  }
+  .chip:hover { color: var(--text); }
+  .chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  /* Gallery */
+  .gallery { columns: 3 300px; column-gap: 16px; }
+  .tile {
+    break-inside: avoid; margin-bottom: 16px; position: relative; border-radius: var(--radius);
+    overflow: hidden; cursor: zoom-in; background: var(--surface); border: 1px solid var(--line);
+    opacity: 0; transform: translateY(24px); transition: opacity .7s, transform .7s;
+  }
+  .tile.in { opacity: 1; transform: none; }
+  .tile.hidden { display: none; }
+  .tile canvas, .tile img { width: 100%; height: auto; transition: transform .8s cubic-bezier(.2,.7,.2,1); }
+  .tile:hover canvas, .tile:hover img { transform: scale(1.04); }
+  .tile figcaption {
+    position: absolute; inset: auto 0 0 0; padding: 40px 18px 16px;
+    background: linear-gradient(transparent, rgba(0,0,0,.85));
+    display: flex; justify-content: space-between; align-items: end; gap: 12px;
+    opacity: 0; transition: opacity .3s;
+  }
+  .tile:hover figcaption, .tile:focus-visible figcaption { opacity: 1; }
+  @media (hover: none) { .tile figcaption { opacity: 1; } }
+  .tile figcaption strong { display: block; font-weight: 500; }
+  .tile figcaption small { color: var(--muted); font-size: 12px; }
+  .tag { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); white-space: nowrap; }
+  .badge-new {
+    position: absolute; top: 12px; left: 12px; padding: 4px 10px; border-radius: 999px;
+    background: var(--accent-2); color: #fff; font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+  }
+
+  /* Upload demo */
+  .upload {
+    margin-top: 40px; border: 1.5px dashed var(--line); border-radius: var(--radius);
+    padding: 40px 24px; text-align: center; color: var(--muted); transition: border-color .2s, background .2s;
+  }
+  .upload.drag { border-color: var(--accent); background: rgba(124,247,212,.05); }
+  .upload h3 { color: var(--text); font-weight: 500; margin-bottom: 6px; }
+  .upload .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
+  .upload input[type=text], .upload select {
+    background: var(--surface); border: 1px solid var(--line); color: var(--text);
+    padding: 12px 14px; border-radius: 10px; font: inherit; font-size: 14px; min-width: 0;
+  }
+  .upload input[type=text] { width: min(260px, 100%); }
+  .upload .btn { margin-top: 0; }
+  .upload .note { font-size: 12px; margin-top: 14px; }
+
+  /* Quotes */
+  .quotes { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .quote-stage { position: relative; min-height: 300px; }
+  .quote {
+    position: absolute; inset: 0; opacity: 0; transform: translateY(12px);
+    transition: opacity .8s, transform .8s; pointer-events: none;
+  }
+  .quote.active { opacity: 1; transform: none; pointer-events: auto; }
+  .quote blockquote { font-size: clamp(28px, 4.4vw, 58px); line-height: 1.15; max-width: 1000px; }
+  .quote blockquote::before { content: "“"; color: var(--accent-2); }
+  .quote blockquote::after { content: "”"; color: var(--accent-2); }
+  .quote cite { display: block; margin-top: 28px; font-style: normal; color: var(--muted); font-size: 14px; letter-spacing: .05em; }
+  .quote cite b { color: var(--text); font-weight: 500; }
+  .dots { display: flex; gap: 10px; margin-top: 32px; }
+  .dots button { width: 28px; height: 3px; border: 0; background: var(--line); cursor: pointer; border-radius: 2px; transition: background .3s; }
+  .dots button.active { background: var(--accent); }
+  .quote-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 64px; }
+  .mini-quote { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; }
+  .mini-quote p { font-size: 15px; }
+  .mini-quote span { display: block; margin-top: 14px; color: var(--muted); font-size: 13px; }
+
+  /* Process */
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; counter-reset: s; }
+  .step { padding: 28px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); }
+  .step::before { counter-increment: s; content: "0" counter(s); display: block; color: var(--accent); font-size: 13px; letter-spacing: .15em; margin-bottom: 40px; }
+  .step h3 { font-weight: 500; font-size: 20px; margin-bottom: 8px; }
+  .step p { color: var(--muted); font-size: 15px; }
+
+  /* About + contact */
+  .about-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: clamp(32px, 6vw, 96px); align-items: center; }
+  @media (max-width: 800px) { .about-grid { grid-template-columns: 1fr; } }
+  .portrait { aspect-ratio: 4/5; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); }
+  .portrait canvas { width: 100%; height: 100%; }
+  .about-grid h2 { font-size: clamp(40px, 5vw, 68px); line-height: 1; margin-bottom: 24px; }
+  .about-grid p { color: var(--muted); margin-bottom: 16px; max-width: 560px; }
+  .clients { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 28px; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--text); opacity: .7; }
+
+  .contact { text-align: center; }
+  .contact h2 { font-size: clamp(48px, 9vw, 132px); line-height: .95; }
+  .contact h2 a { text-decoration: none; background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .contact p { color: var(--muted); margin-top: 18px; }
+  footer { border-top: 1px solid var(--line); padding: 28px 0; color: var(--muted); font-size: 13px; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+  /* Lightbox */
+  .lightbox {
+    position: fixed; inset: 0; z-index: 100; background: rgba(4,4,6,.94);
+    display: grid; place-items: center; padding: var(--gutter);
+    opacity: 0; pointer-events: none; transition: opacity .3s;
+  }
+  .lightbox.open { opacity: 1; pointer-events: auto; }
+  .lightbox .frame { max-width: min(1100px, 100%); width: 100%; }
+  .lightbox .media { border-radius: var(--radius); overflow: hidden; max-height: 76vh; display: grid; place-items: center; }
+  .lightbox .media canvas, .lightbox .media img { max-height: 76vh; width: auto; max-width: 100%; }
+  .lightbox .meta { display: flex; justify-content: space-between; gap: 16px; margin-top: 16px; flex-wrap: wrap; }
+  .lightbox .meta p { color: var(--muted); font-size: 14px; max-width: 640px; }
+  .lb-btn { position: absolute; background: none; border: 1px solid var(--line); color: var(--text); width: 44px; height: 44px; border-radius: 50%; cursor: pointer; font-size: 18px; }
+  .lb-close { top: 20px; right: 20px; }
+  .lb-prev { left: 20px; top: 50%; }
+  .lb-next { right: 20px; top: 50%; }
+  @media (max-width: 640px) { .lb-prev, .lb-next { top: auto; bottom: 20px; } }
+
+  .demo-banner {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 60;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+    padding: 8px 16px; font-size: 12px; color: var(--muted); white-space: nowrap;
+  }
+  @media (max-width: 480px) { .demo-banner { white-space: normal; text-align: center; width: calc(100% - 32px); border-radius: 12px; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+    .tile { opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="wrap">
+    <a class="logo" href="#top">MZ<span>/</span>OPTICS</a>
+    <ul>
+      <li><a href="#work">Work</a></li>
+      <li><a href="#words">Words</a></li>
+      <li class="hide-sm"><a href="#process">Process</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero" style="padding:0">
+    <canvas id="hero-canvas" aria-hidden="true"></canvas>
+    <div class="wrap hero-copy">
+      <div class="eyebrow">Tour visuals · Projection · Drawing machine</div>
+      <h1 class="serif">Michael<br><em>Zimmerman</em></h1>
+      <p class="lead">Artist for hire. Let me design your tour visuals.</p>
+      <a class="btn primary" href="#work">See the work ↓</a>
+    </div>
+  </section>
+
+  <section id="work">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="serif">Selected work</h2>
+        <p>Stage visuals, projection mapping and pieces from the drawing machine. Click any piece to view it larger.</p>
+      </div>
+      <div class="filters" id="filters" role="tablist" aria-label="Filter work"></div>
+      <div class="gallery" id="gallery"></div>
+
+      <div class="upload" id="upload">
+        <h3>Add new work</h3>
+        <div>Drop an image here or pick a file. This is how Michael would add new pieces.</div>
+        <div class="row">
+          <input type="text" id="up-title" placeholder="Title (optional)">
+          <select id="up-cat" aria-label="Category"></select>
+          <label class="btn primary" for="up-file">Choose image</label>
+          <input type="file" id="up-file" accept="image/*" multiple hidden>
+        </div>
+        <div class="note">Demo only: images stay in this browser tab and disappear on refresh.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="words" class="quotes">
+    <div class="wrap">
+      <div class="eyebrow">What people say</div>
+      <div class="quote-stage" id="quote-stage"></div>
+      <div class="dots" id="dots"></div>
+      <div class="quote-grid" id="quote-grid"></div>
+    </div>
+  </section>
+
+  <section id="process">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="serif">Process</h2>
+        <p>From the first listen to the last night of the tour.</p>
+      </div>
+      <div class="steps">
+        <div class="step"><h3>Listen</h3><p>Start with the setlist. Every song gets a mood, a palette and a tempo map.</p></div>
+        <div class="step"><h3>Draw</h3><p>Sketches by hand and by machine. The plotter turns sound into line.</p></div>
+        <div class="step"><h3>Build</h3><p>Motion design, mapped to the stage, amps, screens or whatever surface is there.</p></div>
+        <div class="step"><h3>Run</h3><p>Programmed to cues, or performed live and synced to the band every night.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="about">
+    <div class="wrap about-grid">
+      <div class="portrait"><canvas id="portrait" aria-hidden="true"></canvas></div>
+      <div>
+        <div class="eyebrow">About</div>
+        <h2 class="serif">Artist for hire.</h2>
+        <p>Michael Zimmerman builds visuals for live music: projections that wrap around gear, motion loops for LED walls, and drawings from a homemade drawing machine.</p>
+        <p>He works with bands, venues and festivals to make shows that look as good as they sound.</p>
+        <div class="clients"><span>Tour visuals</span><span>Projection mapping</span><span>Motion design</span><span>Drawing machine</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact" class="contact">
+    <div class="wrap">
+      <div class="eyebrow">Booking a tour?</div>
+      <h2 class="serif"><a href="mailto:hello@example.com">Get in<br>touch.</a></h2>
+      <p>hello@example.com · <a href="https://instagram.com/mz_optics" target="_blank" rel="noopener">@mz_optics</a></p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© <span id="yr"></span> Michael Zimmerman</span>
+    <span>Demo site</span>
+  </div>
+</footer>
+
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Artwork viewer">
+  <button class="lb-btn lb-close" id="lb-close" aria-label="Close">✕</button>
+  <button class="lb-btn lb-prev" id="lb-prev" aria-label="Previous">←</button>
+  <button class="lb-btn lb-next" id="lb-next" aria-label="Next">→</button>
+  <div class="frame">
+    <div class="media" id="lb-media"></div>
+    <div class="meta">
+      <div><strong id="lb-title"></strong> <span class="tag" id="lb-tag"></span></div>
+      <p id="lb-desc"></p>
+    </div>
+  </div>
+</div>
+
+<div class="demo-banner">Demo: generated artwork stands in for Michael’s pieces. Quotes are placeholders.</div>
+
+<script>
+/*
+ * CONTENT
+ * Swap in real work by adding `src: "images/your-file.jpg"` to an entry.
+ * Entries without `src` draw a generated placeholder.
+ */
+const WORK = [
+  { title: "Amp Bloom",          cat: "Projection",      year: 2026, style: "rings",    ratio: 1.25, hue: 170, desc: "Visuals projected straight onto a guitar amp, pulsing with the kick drum." },
+  { title: "Harmonograph No. 7", cat: "Drawing Machine", year: 2026, style: "lissa",    ratio: 1.0,  hue: 330, desc: "Ink on paper. Two pendulums, one pen, forty minutes." },
+  { title: "Headliner Wall",     cat: "Tour Visuals",    year: 2025, style: "beams",    ratio: 0.66, hue: 260, desc: "LED wall loop built for a 30-date run." },
+  { title: "Interference",       cat: "Projection",      year: 2025, style: "moire",    ratio: 1.0,  hue: 190, desc: "Two projectors, slightly out of phase. The pattern comes from the overlap." },
+  { title: "Spirograph Study",   cat: "Drawing Machine", year: 2025, style: "spiro",    ratio: 1.3,  hue: 40,  desc: "Gear-driven plotter test. Pen pressure set by the bass line." },
+  { title: "Encore",             cat: "Tour Visuals",    year: 2024, style: "grid",     ratio: 0.8,  hue: 300, desc: "Closing-song visual: the stage grid folds in on itself." },
+  { title: "Prism Room",         cat: "Projection",      year: 2024, style: "beams",    ratio: 1.2,  hue: 140, desc: "Site-specific install for a 200-cap venue." },
+  { title: "Pendulum Duet",      cat: "Drawing Machine", year: 2024, style: "lissa",    ratio: 0.75, hue: 200, desc: "Two-color harmonograph, archival print available." },
+  { title: "Tunnel Vision",      cat: "Tour Visuals",    year: 2023, style: "rings",    ratio: 1.0,  hue: 15,  desc: "Opening-act package, mapped to a three-screen rig." },
+];
+
+const QUOTES = [
+  { text: "He turned our backline into the show. People were filming the amps.", who: "Tour manager", role: "Placeholder quote" },
+  { text: "The visuals breathe with the music. You stop noticing where the band ends and the light begins.", who: "Music writer", role: "Placeholder quote" },
+  { text: "Michael showed up with a drawing machine and left with our whole tour look.", who: "Band member", role: "Placeholder quote" },
+  { text: "Easy to work with, fast on changes, and the result was better than the pitch.", who: "Venue booker", role: "Placeholder quote" },
+];
+
+/* ---------- Generative placeholder art ---------- */
+function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
+
+function draw(canvas, item, seed) {
+  const w = canvas.width, h = canvas.height, c = canvas.getContext("2d"), r = rng(seed * 9973 + 7);
+  const H = item.hue, H2 = (H + 140) % 360;
+  c.fillStyle = `hsl(${H} 40% 5%)`; c.fillRect(0, 0, w, h);
+  const g = c.createRadialGradient(w * .5, h * .5, 0, w * .5, h * .5, Math.max(w, h) * .7);
+  g.addColorStop(0, `hsla(${H} 80% 40% / .35)`); g.addColorStop(1, "transparent");
+  c.fillStyle = g; c.fillRect(0, 0, w, h);
+  c.globalCompositeOperation = "lighter";
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) * .45;
+
+  if (item.style === "rings") {
+    for (let i = 0; i < 46; i++) {
+      c.beginPath();
+      const rad = R * (i / 46) * 1.2, wob = 6 + r() * 10;
+      for (let a = 0; a <= Math.PI * 2 + .01; a += .03) {
+        const rr = rad + Math.sin(a * (3 + (i % 5)) + i) * wob;
+        c.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+      }
+      c.strokeStyle = `hsla(${i % 2 ? H : H2} 90% 65% / ${.15 + r() * .5})`;
+      c.lineWidth = 1 + r() * 1.5; c.stroke();
+    }
+  } else if (item.style === "lissa" || item.style === "spiro") {
+    const a = 2 + Math.floor(r() * 4), b = 3 + Math.floor(r() * 4), d = r() * Math.PI;
+    c.beginPath();
+    for (let t = 0; t < 600; t += .02) {
+      const decay = Math.exp(-t * .004);
+      let x, y;
+      if (item.style === "lissa") {
+        x = Math.sin(a * t + d) * decay + Math.sin(t * 1.003) * .15 * decay;
+        y = Math.sin(b * t) * decay + Math.cos(t * .997) * .15 * decay;
+      } else {
+        const k = .38, l = .9;
+        x = ((1 - k) * Math.cos(t) + l * k * Math.cos((1 - k) / k * t)) * decay;
+        y = ((1 - k) * Math.sin(t) - l * k * Math.sin((1 - k) / k * t)) * decay;
+      }
+      c.lineTo(cx + x * R, cy + y * R);
+    }
+    c.strokeStyle = `hsla(${H} 90% 65% / .22)`; c.lineWidth = 1.2; c.stroke();
+  } else if (item.style === "beams") {
+    for (let i = 0; i < 60; i++) {
+      const ox = w * (.3 + r() * .4), oy = h * 1.05, ang = -Math.PI / 2 + (r() - .5) * 1.6, len = h * (0.6 + r() * .7);
+      const gr = c.createLinearGradient(ox, oy, ox + Math.cos(ang) * len, oy + Math.sin(ang) * len);
+      gr.addColorStop(0, `hsla(${r() > .5 ? H : H2} 95% 65% / .5)`); gr.addColorStop(1, "transparent");
+      c.strokeStyle = gr; c.lineWidth = 1 + r() * 6;
+      c.beginPath(); c.moveTo(ox, oy); c.lineTo(ox + Math.cos(ang) * len, oy + Math.sin(ang) * len); c.stroke();
+    }
+  } else if (item.style === "moire") {
+    [[cx - R * .15, cy, H], [cx + R * .15, cy, H2]].forEach(([x, y, hue]) => {
+      for (let rad = 4; rad < R * 2; rad += 7) {
+        c.beginPath(); c.arc(x, y, rad, 0, Math.PI * 2);
+        c.strokeStyle = `hsla(${hue} 90% 60% / .35)`; c.lineWidth = 2; c.stroke();
+      }
+    });
+  } else if (item.style === "grid") {
+    const n = 26;
+    for (let i = 0; i <= n; i++) for (let dir = 0; dir < 2; dir++) {
+      c.beginPath();
+      for (let j = 0; j <= 80; j++) {
+        let u = i / n, v = j / 80; if (dir) [u, v] = [v, u];
+        let x = (u - .5) * 2, y = (v - .5) * 2;
+        const d = Math.hypot(x, y), f = 1 / (1 + d * d * 1.6);
+        x *= (1 - f * .8); y *= (1 - f * .8);
+        c.lineTo(cx + x * w * .55, cy + y * h * .55);
+      }
+      c.strokeStyle = `hsla(${dir ? H : H2} 90% 62% / .45)`; c.lineWidth = 1; c.stroke();
+    }
+  }
+  c.globalCompositeOperation = "source-over";
+}
+
+function makeMedia(item, i, maxW = 900) {
+  if (item.src) {
+    const img = new Image(); img.src = item.src; img.alt = item.title; img.loading = "lazy";
+    return img;
+  }
+  const cv = document.createElement("canvas");
+  cv.width = maxW; cv.height = Math.round(maxW / item.ratio);
+  cv.setAttribute("role", "img"); cv.setAttribute("aria-label", item.title);
+  draw(cv, item, i + 1);
+  return cv;
+}
+
+/* ---------- Gallery ---------- */
+const gallery = document.getElementById("gallery");
+const CATS = ["All", ...new Set(WORK.map(w => w.cat))];
+let activeCat = "All";
+
+const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { threshold: .1 });
+
+function tileFor(item, i) {
+  const fig = document.createElement("figure");
+  fig.className = "tile"; fig.tabIndex = 0; fig.dataset.cat = item.cat; fig.dataset.idx = i;
+  fig.appendChild(makeMedia(item, i, 700));
+  fig.insertAdjacentHTML("beforeend", `<figcaption><div><strong></strong><small>${item.year}</small></div><span class="tag"></span></figcaption>`);
+  fig.querySelector("strong").textContent = item.title;
+  fig.querySelector(".tag").textContent = item.cat;
+  if (item.isNew) fig.insertAdjacentHTML("beforeend", `<span class="badge-new">New</span>`);
+  fig.addEventListener("click", () => openLB(i));
+  fig.addEventListener("keydown", e => { if (e.key === "Enter") openLB(i); });
+  return fig;
+}
+
+function renderGallery() {
+  gallery.innerHTML = "";
+  WORK.forEach((item, i) => {
+    const t = tileFor(item, i);
+    if (activeCat !== "All" && item.cat !== activeCat) t.classList.add("hidden");
+    gallery.appendChild(t); io.observe(t);
+  });
+}
+
+const filters = document.getElementById("filters");
+CATS.forEach(cat => {
+  const b = document.createElement("button");
+  b.className = "chip" + (cat === "All" ? " active" : ""); b.textContent = cat; b.setAttribute("role", "tab");
+  b.onclick = () => {
+    activeCat = cat;
+    filters.querySelectorAll(".chip").forEach(x => x.classList.toggle("active", x === b));
+    gallery.querySelectorAll(".tile").forEach(t => t.classList.toggle("hidden", cat !== "All" && t.dataset.cat !== cat));
+  };
+  filters.appendChild(b);
+});
+renderGallery();
+
+/* ---------- Upload demo ---------- */
+const upCat = document.getElementById("up-cat");
+CATS.slice(1).forEach(c => upCat.add(new Option(c, c)));
+function addFiles(files) {
+  [...files].filter(f => f.type.startsWith("image/")).forEach(f => {
+    const title = document.getElementById("up-title").value.trim() || f.name.replace(/\.[^.]+$/, "");
+    WORK.unshift({ title, cat: upCat.value, year: new Date().getFullYear(), src: URL.createObjectURL(f), desc: "Just uploaded.", isNew: true });
+  });
+  document.getElementById("up-title").value = "";
+  renderGallery();
+  gallery.scrollIntoView({ behavior: "smooth" });
+}
+document.getElementById("up-file").onchange = e => addFiles(e.target.files);
+const up = document.getElementById("upload");
+["dragenter", "dragover"].forEach(ev => up.addEventListener(ev, e => { e.preventDefault(); up.classList.add("drag"); }));
+["dragleave", "drop"].forEach(ev => up.addEventListener(ev, e => { e.preventDefault(); up.classList.remove("drag"); }));
+up.addEventListener("drop", e => addFiles(e.dataTransfer.files));
+
+/* ---------- Lightbox ---------- */
+const lb = document.getElementById("lightbox");
+let lbIdx = 0;
+function visibleIdx() { return WORK.map((w, i) => i).filter(i => activeCat === "All" || WORK[i].cat === activeCat); }
+function openLB(i) {
+  lbIdx = i; const item = WORK[i], m = document.getElementById("lb-media");
+  m.innerHTML = ""; m.appendChild(makeMedia(item, i, 1400));
+  document.getElementById("lb-title").textContent = item.title;
+  document.getElementById("lb-tag").textContent = `${item.cat} · ${item.year}`;
+  document.getElementById("lb-desc").textContent = item.desc || "";
+  lb.classList.add("open"); document.body.style.overflow = "hidden";
+}
+function closeLB() { lb.classList.remove("open"); document.body.style.overflow = ""; }
+function stepLB(d) { const v = visibleIdx(), p = v.indexOf(lbIdx); openLB(v[(p + d + v.length) % v.length]); }
+document.getElementById("lb-close").onclick = closeLB;
+document.getElementById("lb-prev").onclick = () => stepLB(-1);
+document.getElementById("lb-next").onclick = () => stepLB(1);
+lb.addEventListener("click", e => { if (e.target === lb) closeLB(); });
+document.addEventListener("keydown", e => {
+  if (!lb.classList.contains("open")) return;
+  if (e.key === "Escape") closeLB(); if (e.key === "ArrowLeft") stepLB(-1); if (e.key === "ArrowRight") stepLB(1);
+});
+
+/* ---------- Quotes ---------- */
+const stage = document.getElementById("quote-stage"), dots = document.getElementById("dots");
+let qi = 0, qTimer;
+QUOTES.forEach((q, i) => {
+  const d = document.createElement("div"); d.className = "quote" + (i === 0 ? " active" : "");
+  d.innerHTML = `<blockquote class="serif"></blockquote><cite><b></b> — <span></span></cite>`;
+  d.querySelector("blockquote").textContent = q.text; d.querySelector("b").textContent = q.who; d.querySelector("cite span").textContent = q.role;
+  stage.appendChild(d);
+  const b = document.createElement("button"); b.setAttribute("aria-label", `Quote ${i + 1}`); if (!i) b.className = "active";
+  b.onclick = () => { showQuote(i); restartQ(); }; dots.appendChild(b);
+});
+function showQuote(i) {
+  qi = i;
+  stage.querySelectorAll(".quote").forEach((q, j) => q.classList.toggle("active", j === i));
+  dots.querySelectorAll("button").forEach((b, j) => b.classList.toggle("active", j === i));
+}
+function restartQ() { clearInterval(qTimer); qTimer = setInterval(() => showQuote((qi + 1) % QUOTES.length), 6000); }
+restartQ();
+const qg = document.getElementById("quote-grid");
+QUOTES.slice(1).forEach(q => {
+  const d = document.createElement("div"); d.className = "mini-quote"; d.innerHTML = "<p></p><span></span>";
+  d.querySelector("p").textContent = `“${q.text}”`; d.querySelector("span").textContent = `${q.who} · ${q.role}`;
+  qg.appendChild(d);
+});
+
+/* ---------- Hero: live drawing machine ---------- */
+(function hero() {
+  const cv = document.getElementById("hero-canvas"), c = cv.getContext("2d");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let w, h, t = 0, last, params;
+  function reset() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    w = cv.width = cv.offsetWidth * dpr; h = cv.height = cv.offsetHeight * dpr;
+    c.fillStyle = "#07070a"; c.fillRect(0, 0, w, h);
+    params = { a: 2 + Math.random() * .02, b: 3 + Math.random() * .02, p: Math.random() * 6, hue: 160 + Math.random() * 40 };
+    t = 0; last = null;
+    for (let i = 0; i < 120; i++) frame(true); // start with a drawing already in progress
+  }
+  function pt(tt) {
+    const R = Math.min(w, h) * .42, decay = Math.exp(-tt * .0025);
+    return [w * .62 + (Math.sin(params.a * tt + params.p) + .3 * Math.sin(tt * 1.01)) * R * decay * 1.1,
+            h * .45 + (Math.sin(params.b * tt) + .3 * Math.cos(tt * .99)) * R * decay * .8];
+  }
+  function frame(still) {
+    c.fillStyle = "rgba(7,7,10,.006)"; c.fillRect(0, 0, w, h);
+    c.globalCompositeOperation = "lighter";
+    for (let k = 0; k < 60; k++) {
+      t += .015;
+      const p = pt(t);
+      if (last) {
+        c.strokeStyle = `hsla(${params.hue + Math.sin(t * .05) * 140} 90% 62% / .55)`;
+        c.lineWidth = 1.4; c.beginPath(); c.moveTo(...last); c.lineTo(...p); c.stroke();
+      }
+      last = p;
+    }
+    c.globalCompositeOperation = "source-over";
+    if (still === true) return;
+    if (t > 1200) reset();
+    requestAnimationFrame(frame);
+  }
+  reset(); addEventListener("resize", reset);
+  if (reduce) return;
+  requestAnimationFrame(frame);
+})();
+
+/* ---------- Portrait placeholder ---------- */
+(function () {
+  const cv = document.getElementById("portrait"); cv.width = 800; cv.height = 1000;
+  draw(cv, { style: "spiro", hue: 330 }, 42);
+})();
+
+/* ---------- Misc ---------- */
+document.getElementById("yr").textContent = new Date().getFullYear();
+const nav = document.getElementById("nav");
+addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 20), { passive: true });
+</script>
+</body>
+</html>
